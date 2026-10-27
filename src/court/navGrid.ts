@@ -1,10 +1,11 @@
 // A copy of the game's `src/games/duel-arena/game/lobby/navGrid.ts` (void-casino-games), changed only in
 // its import paths: the server walks the court by the same map and rules the game draws. Keep the
 // two in step.
-import { BLOCKING_BOXES, BLOCKING_CIRCLES, COURT } from './lobbyMap.js'
+import { BLOCKING_BOXES, BLOCKING_CIRCLES, WALK_BOUNDS, onFloor } from './lobbyMap.js'
 import type { Point } from './point.js'
 
-// The court is walked the way the game walks: tile by tile. The floor is a grid of one-metre tiles
+// The court — and the passage and the coliseum's gallery beyond its gate — is walked the way the
+// game walks: tile by tile. The floor is a grid of one-metre tiles
 // with their middles on whole metres, one of them on the origin. A body stands in the middle of a
 // tile and steps to any of the eight round it, a diagonal step being one step like any other, so a
 // walk is a run of single steps. The way somewhere is searched breadth first over the tiles, and of
@@ -14,10 +15,10 @@ export const TILE = 1
 // a body's half-width.
 const BODY = 0.34
 
-const MIN_COL = Math.ceil((COURT.minX + BODY) / TILE)
-const MAX_COL = Math.floor((COURT.maxX - BODY) / TILE)
-const MIN_ROW = Math.ceil((COURT.minZ + BODY) / TILE)
-const MAX_ROW = Math.floor((COURT.maxZ - BODY) / TILE)
+const MIN_COL = Math.ceil((WALK_BOUNDS.minX + BODY) / TILE)
+const MAX_COL = Math.floor((WALK_BOUNDS.maxX - BODY) / TILE)
+const MIN_ROW = Math.ceil((WALK_BOUNDS.minZ + BODY) / TILE)
+const MAX_ROW = Math.floor((WALK_BOUNDS.maxZ - BODY) / TILE)
 const COLS = MAX_COL - MIN_COL + 1
 const ROWS = MAX_ROW - MIN_ROW + 1
 
@@ -28,7 +29,7 @@ const DIRECTIONS = [
 ] as const
 
 function blockedAt(x: number, z: number) {
-  if (x < COURT.minX + BODY || x > COURT.maxX - BODY || z < COURT.minZ + BODY || z > COURT.maxZ - BODY) return true
+  if (!onFloor(x, z, BODY)) return true
   for (const c of BLOCKING_CIRCLES) {
     const r = c.r + BODY
     if ((x - c.x) ** 2 + (z - c.z) ** 2 < r * r) return true

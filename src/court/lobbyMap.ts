@@ -11,8 +11,14 @@
 //
 // The courtyard is centred on the origin with its floor at y = 0; north is -z, which is where the
 // gate to the arenas is, and the camera starts out looking north from the south side.
+//
+// Through the gate lies the coliseum every duel is fought in: its sand sunk to `SAND_Y`, a wall round
+// it topped by a parapet, and the gallery round that, at the court's own level, which is where people
+// walk to watch. Nobody walks on the sand.
 
 export type Circle = { x: number; z: number; r: number }
+// An oval on the floor: its middle and its half-widths along x and along z.
+export type Oval = { x: number; z: number; rx: number; rz: number }
 // Axis-aligned: everything in a courtyard built on a grid lines up with its walls.
 export type Box = { x: number; z: number; w: number; d: number }
 
@@ -26,6 +32,44 @@ export const GATE = { x: 0, z: COURT.minZ, half: 2.2 }
 
 // Where you come in: a tile, as everywhere a body stands is.
 export const SPAWN = { x: 0, z: 3 }
+
+// The coliseum, north of the gate. The sand the duels are fought on is sunk to `SAND_Y`; the wall
+// round it stands from the sand to `PARAPET_HEIGHT` over the court's level, its top the gallery's
+// inner edge. The gallery is walked from there out to `GALLERY`; the band between that and the outer
+// wall holds its fires and its crowd.
+export const COLISEUM = { x: 0, z: -30.5 }
+export const SAND_Y = -4
+export const SAND: Oval = { ...COLISEUM, rx: 21, rz: 12.5 }
+export const PARAPET: Oval = { ...COLISEUM, rx: 21.5, rz: 13 }
+export const PARAPET_HEIGHT = 1
+export const GALLERY: Oval = { ...COLISEUM, rx: 24.6, rz: 16.1 }
+export const COLISEUM_WALL_INNER: Oval = { ...COLISEUM, rx: 25.4, rz: 16.9 }
+export const COLISEUM_WALL: Oval = { ...COLISEUM, rx: 26, rz: 17.5 }
+
+// The way from the gate to the gallery, as wide as the gate. It runs on into the gallery, so the two
+// overlap rather than meet at a seam.
+export const PASSAGE = { minX: -GATE.half, maxX: GATE.half, minZ: PARAPET.z + PARAPET.rz, maxZ: COURT.minZ }
+
+// Everything anybody walks on lies inside this box: the court, the passage and the gallery.
+export const WALK_BOUNDS = { minX: -GALLERY.rx, maxX: GALLERY.rx, minZ: GALLERY.z - GALLERY.rz, maxZ: COURT.maxZ }
+
+// Whether a point is inside an oval grown (or, negative, shrunk) by `grow` all round.
+export function inOval(oval: Oval, x: number, z: number, grow = 0) {
+  return ((x - oval.x) / (oval.rx + grow)) ** 2 + ((z - oval.z) / (oval.rz + grow)) ** 2 <= 1
+}
+
+// Whether a body `margin` wide stands on floor anybody walks: the court, the passage or the gallery.
+export function onFloor(x: number, z: number, margin: number) {
+  const court = x >= COURT.minX + margin && x <= COURT.maxX - margin && z >= COURT.minZ + margin && z <= COURT.maxZ - margin
+  const passage = Math.abs(x) <= GATE.half - margin && z >= PASSAGE.minZ && z <= COURT.minZ + margin
+  const gallery = inOval(GALLERY, x, z, -margin) && !inOval(PARAPET, x, z, margin)
+  return court || passage || gallery
+}
+
+// Whether a point is on the gallery, looking down into the arena.
+export function onGallery(x: number, z: number) {
+  return inOval(GALLERY, x, z) && !inOval(PARAPET, x, z)
+}
 
 // Round towers at the four corners. Mostly outside the court; the inner quarter is in the way.
 export const TOWERS: Circle[] = [
