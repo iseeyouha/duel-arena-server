@@ -244,4 +244,9 @@ describe("the court", () => {
     await leaving.leave();
     await until(room, () => room.state.people.size === 1);
   });
+
+  it("holds a hundred people", async () => {
+    const room = await colyseus.createRoom<CourtRoom>("court", {});
+    assert.strictEqual(room.maxClients, 100);
+  });
 });

@@ -27,6 +27,9 @@ function writeDuel(view: DuelState, duel: TableDuel) {
   view.rival = duel.seats.rival.id;
   view.selfName = duel.seats.self.name;
   view.rivalName = duel.seats.rival.name;
+  view.selfLook = duel.seats.self.look;
+  view.rivalLook = duel.seats.rival.look;
+  view.spot = duel.spot;
   view.phase = game.phase;
   view.noFood = duel.rules.noFood;
   view.noArmour = duel.rules.noArmour;

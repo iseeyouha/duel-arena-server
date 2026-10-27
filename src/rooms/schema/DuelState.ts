@@ -9,6 +9,12 @@ export const DuelState = schema({
   rival: t.string(),
   selfName: t.string(),
   rivalName: t.string(),
+  // The looks the two wear, roster ids of the game's: kept here, so a fighter who has left the room
+  // is still drawn.
+  selfLook: t.string(),
+  rivalLook: t.string(),
+  // Where in the arena it is fought, an index into the game's spots; -1 until it starts.
+  spot: t.number().default(-1),
   // offer, countdown, fighting or settled: the game's own phases.
   phase: t.string(),
   noFood: t.boolean().default(false),

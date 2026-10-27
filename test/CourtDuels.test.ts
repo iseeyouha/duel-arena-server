@@ -2,6 +2,7 @@ import assert from "assert";
 import type { ColyseusTestServer } from "@colyseus/testing";
 
 import type appConfig from "../src/app.config.js";
+import { DuelTable } from "../src/duels/DuelTable.js";
 import type { CourtRoom } from "../src/rooms/CourtRoom.js";
 import { testServer } from "./testServer.js";
 
@@ -58,7 +59,7 @@ describe("duels in the court", () => {
   async function join(room: CourtRoom, n: number) {
     colyseus.sdk.auth.token = user(n);
     const client = await colyseus.connectTo(room);
-    for (const type of ["challenged", "requestEnded", "requested", "declined", "busy", "balance"]) client.onMessage(type, () => {});
+    for (const type of ["challenged", "requestEnded", "requested", "declined", "busy", "balance", "arenaFull"]) client.onMessage(type, () => {});
     return client;
   }
 
@@ -439,5 +440,39 @@ describe("duels in the court", () => {
     await until(room, () => room.table.duels.size === 0, 400);
 
     assert.strictEqual(room.balances.of(user(2)), 100_940);
+  });
+
+  it("puts a started duel on a spot and carries both fighters' looks", async () => {
+    const room = await colyseus.createRoom<CourtRoom>("court", {});
+    const { a, b, duelId } = await startDuel(room);
+    const duel = room.state.duels.get(duelId);
+    assert.strictEqual(duel.spot, 0);
+    assert.strictEqual(duel.selfLook, room.state.people.get(a.sessionId).look);
+    assert.strictEqual(duel.rivalLook, room.state.people.get(b.sessionId).look);
+  });
+
+  it("still names and dresses a fighter who has left mid-duel", async () => {
+    const room = await colyseus.createRoom<CourtRoom>("court", {});
+    const { a, duelId } = await startDuel(room);
+    const { look, name } = room.state.people.get(a.sessionId);
+    const { selfLook, selfName } = room.state.duels.get(duelId);
+    assert.deepStrictEqual([selfLook, selfName], [look, name]);
+    await a.leave();
+    await steps(room, 3);
+    assert.ok(!room.state.people.has(a.sessionId));
+    assert.strictEqual(room.state.duels.get(duelId).selfLook, selfLook);
+    assert.strictEqual(room.state.duels.get(duelId).selfName, selfName);
+  });
+
+  it("tells both when the arena is full and stakes nothing", async () => {
+    const room = await colyseus.createRoom<CourtRoom>("court", {});
+    room.table = new DuelTable(room.balances, 0);
+    const { a, b, duelId } = await challengeAndAnswer(room);
+    const full = [inbox(a, "arenaFull"), inbox(b, "arenaFull")];
+    const revision = room.state.duels.get(duelId).revision;
+    a.send("accept", { revision });
+    b.send("accept", { revision });
+    await until(room, () => full.every((got) => got.length > 0));
+    assert.strictEqual(room.state.duels.get(duelId).phase, "offer");
   });
 });

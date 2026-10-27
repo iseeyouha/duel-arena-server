@@ -5,7 +5,7 @@ import { settlement } from "../src/duel/settlement.js";
 import { Balances } from "../src/duels/Balances.js";
 import { DuelTable, type TableNews } from "../src/duels/DuelTable.js";
 
-const seat = (n: number) => ({ id: `s${n}`, user: `u${n}`, name: `Player ${n}` });
+const seat = (n: number) => ({ id: `s${n}`, user: `u${n}`, name: `Player ${n}`, look: "soldier-red" });
 
 function mulberry32(seed: number) {
   return () => {
@@ -190,7 +190,7 @@ describe("the duel table", () => {
   it("never takes more than somebody has, even sat on both sides", () => {
     const balances = new Balances();
     const table = new DuelTable(balances);
-    const duel = table.open(seat(1), { id: "s1b", user: "u1", name: "Player 1" }, NO_RULES, 60_000);
+    const duel = table.open(seat(1), { id: "s1b", user: "u1", name: "Player 1", look: "soldier-red" }, NO_RULES, 60_000);
     table.accept("s1", Math.random, duel.revision);
     assert.strictEqual(table.accept("s1b", Math.random, duel.revision), null);
     assert.strictEqual(balances.of("u1"), 100_000);
@@ -203,5 +203,41 @@ describe("the duel table", () => {
     assert.ok(table.decline("s2"));
     assert.strictEqual(table.duels.size, 0);
     assert.strictEqual(table.decline("s2"), null);
+  });
+
+  it("hands each started duel the first free spot, and frees it once the duel is over", () => {
+    const balances = new Balances();
+    const table = new DuelTable(balances);
+    const first = table.open(seat(1), seat(2), NO_RULES, 1_000);
+    const second = table.open(seat(3), seat(4), NO_RULES, 1_000);
+    assert.strictEqual(first.spot, -1);
+    for (const [duel, a, b] of [[first, "s1", "s2"], [second, "s3", "s4"]] as const) {
+      table.accept(a, Math.random, duel.revision);
+      table.accept(b, Math.random, duel.revision);
+    }
+    assert.deepStrictEqual([first.spot, second.spot], [0, 1]);
+    for (let step = 0; step < 20_000 && table.duels.has(first.id); step++) table.step(0.05, Math.random);
+    assert.ok(!table.duels.has(first.id) || !table.duels.has(second.id), "one of them ended");
+    const gone = table.duels.has(first.id) ? second : first;
+    const third = table.open(seat(5), seat(6), NO_RULES, 1_000);
+    table.accept("s5", Math.random, third.revision);
+    table.accept("s6", Math.random, third.revision);
+    assert.strictEqual(third.spot, gone.spot);
+    const live = [...table.duels.values()].map((duel) => duel.spot);
+    assert.strictEqual(new Set(live).size, live.length, "no two duels on one spot");
+  });
+
+  it("refuses the second accept when the arena is full, staking nothing", () => {
+    const balances = new Balances();
+    const table = new DuelTable(balances, 0);
+    const duel = table.open(seat(1), seat(2), NO_RULES, 1_000);
+    const before = [balances.of("u1"), balances.of("u2")];
+    table.accept("s1", Math.random, duel.revision);
+    const news = table.accept("s2", Math.random, duel.revision);
+    assert.deepStrictEqual(news, { type: "full", duel });
+    assert.deepStrictEqual(duel.accepted, { self: false, rival: false });
+    assert.deepStrictEqual([balances.of("u1"), balances.of("u2")], before);
+    assert.strictEqual(duel.duel.phase, "offer");
+    assert.strictEqual(duel.spot, -1);
   });
 });

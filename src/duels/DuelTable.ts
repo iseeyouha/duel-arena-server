@@ -1,3 +1,4 @@
+import { firstFreeSpot, SPOT_COUNT } from "../court/arena.js";
 import { TAUNTS } from "../court/taunts.js";
 import { MIN_BET, SPEC_COST } from "../duel/config.js";
 import { NO_RULES, specAllowed, type DuelRuleId, type DuelRules } from "../duel/rules.js";
@@ -8,8 +9,11 @@ import type { Duel, Side } from "../duel/types.js";
 import type { Balances } from "./Balances.js";
 import { newDuel } from "./newDuel.js";
 
-/** Somebody at a duel: their session id, their auth user id (whose balance it is) and their name. */
-export type Seat = { id: string; user: string; name: string };
+/**
+ * Somebody at a duel: their session id, their auth user id (whose balance it is), their name and the
+ * look they wear — kept on the duel, so it is still drawn after they have left the room.
+ */
+export type Seat = { id: string; user: string; name: string; look: string };
 
 export type TableDuel = {
   id: string;
@@ -17,6 +21,8 @@ export type TableDuel = {
   seats: Record<Side, Seat>;
   rules: DuelRules;
   stake: number;
+  /** Where in the arena it is fought: an index into the game's spots, -1 until it starts. */
+  spot: number;
   accepted: Record<Side, boolean>;
   /** Accepts taken back by a change, so the offer can say why one just went. */
   resets: number;
@@ -37,6 +43,8 @@ export type TableDuel = {
 
 export type TableNews =
   | { type: "started"; duel: TableDuel }
+  /** Agreed, but every spot in the arena is taken: nothing was staked, and both accepts went back. */
+  | { type: "full"; duel: TableDuel }
   | { type: "settled"; duel: TableDuel }
   /** The arena's pause is over and the duel is off the table. */
   | { type: "ended"; duel: TableDuel };
@@ -55,7 +63,8 @@ export class DuelTable {
   readonly duels = new Map<string, TableDuel>();
   private opened = 0;
 
-  constructor(private balances: Balances) {}
+  /** `spots` is how many duels the arena holds at once. */
+  constructor(private balances: Balances, private spots: number = SPOT_COUNT) {}
 
   open(self: Seat, rival: Seat, rules: DuelRules, stake: number): TableDuel {
     this.opened += 1;
@@ -64,6 +73,7 @@ export class DuelTable {
       seats: { self, rival },
       rules: { ...rules },
       stake,
+      spot: -1,
       accepted: { self: false, rival: false },
       resets: 0,
       revision: 0,
@@ -108,11 +118,18 @@ export class DuelTable {
     if (duel.stake < MIN_BET || this.balances.of(duel.seats[side].user) < duel.stake) { return null; }
     duel.accepted[side] = true;
     if (!duel.accepted.self || !duel.accepted.rival) { return null; }
+    // A spot first, the stakes after: a duel with nowhere to be fought takes nobody's money.
+    const spot = firstFreeSpot(this.takenSpots(), this.spots);
+    if (spot === -1) {
+      duel.accepted = { self: false, rival: false };
+      return { type: "full", duel };
+    }
     if (!this.takeStakes(duel)) {
       // Agreed, but not covered: taken back, so it can be changed and agreed again.
       duel.accepted = { self: false, rival: false };
       return null;
     }
+    duel.spot = spot;
     startDuel(duel.duel, duel.rules, duel.stake, random);
     return { type: "started", duel };
   }
@@ -178,6 +195,10 @@ export class DuelTable {
       }
     }
     return news;
+  }
+
+  private takenSpots() {
+    return new Set([...this.duels.values()].map((duel) => duel.spot).filter((spot) => spot >= 0));
   }
 
   private agreeing(sessionId: string) {

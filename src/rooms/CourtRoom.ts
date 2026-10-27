@@ -55,7 +55,7 @@ function termsOf(message: unknown): Terms | null {
  * by tile on the game's tick: one a tick walking, two running.
  */
 export class CourtRoom extends Room<{ state: CourtState }> {
-  maxClients = 16;
+  maxClients = 100;
   state = new CourtState();
 
   /**
@@ -167,6 +167,7 @@ export class CourtRoom extends Room<{ state: CourtState }> {
       if (!this.takeOrder(client.sessionId)) { return; }
       const news = this.table.accept(client.sessionId, this.random, (message as { revision?: unknown } | null)?.revision);
       if (news?.type === "started") { this.started(news.duel); }
+      if (news?.type === "full") { for (const seat of Object.values(news.duel.seats)) this.sendTo(seat.id, "arenaFull", {}); }
     },
 
     // Told to whoever declines as well: until it is, the client can't know it wasn't too late.
@@ -337,7 +338,12 @@ export class CourtRoom extends Room<{ state: CourtState }> {
   private openOffer(request: Request) {
     // Still waiting when it was answered by a challenge back: its toast goes too.
     if (this.challenges.take(request.from, request.to)) { this.sendTo(request.to, "requestEnded", { from: request.from }); }
-    const seat = (id: string) => ({ id, user: this.users.get(id) ?? id, name: this.state.people.get(id)?.name ?? "" });
+    const seat = (id: string) => ({
+      id,
+      user: this.users.get(id) ?? id,
+      name: this.state.people.get(id)?.name ?? "",
+      look: this.state.people.get(id)?.look ?? "",
+    });
     this.table.open(seat(request.from), seat(request.to), request.terms.rules, request.terms.stake);
     for (const id of [request.from, request.to]) {
       this.routes.set(id, []);
