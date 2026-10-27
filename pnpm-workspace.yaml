@@ -1,0 +1,7 @@
+overrides:
+  # A peer of `colyseus` that pulls uWebSockets.js from GitHub, which pnpm refuses
+  # (blockExoticSubdeps). The server uses the default ws transport.
+  "@colyseus/uwebsockets-transport": "-"
+allowBuilds:
+  esbuild: true
+  msgpackr-extract: false
