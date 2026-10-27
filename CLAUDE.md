@@ -19,15 +19,23 @@ people, the rolls, the ticks and the accepts cannot live in the browser.
   accept takes both stakes and the duel is the game's own, ticked and rolled here; it is paid on the
   tick that ends it and both come back to the court in front of the statue. The money is demo money,
   held here.
-- Not yet: chat, the Platform's auth, balance and randomness, spectating, rejoining a duel after a
-  reload, a rematch.
+- **Every duel has a spot, and everybody sees every duel.** The game is one world: the court and a
+  coliseum through its north gate, where each started duel is fought on a spot of its own (the first
+  free of the game's fifty) and anybody on the gallery watches. Every duel's state goes to the whole
+  room — its looks and names on it, so a fighter who has left is still drawn — but its money only to
+  its two duellists.
+- **A hundred people a court.** Load-tested with `pnpm loadtest`: a hundred clients duelling, fifty
+  duels at once, at about 3% of a core.
+- Not yet: chat, the Platform's auth, balance and randomness, rejoining a duel after a reload, a
+  rematch.
 - Scaffolded with `create-colyseus-app` 0.18.1:
 
   ```sh
   pnpm create colyseus-app@latest duel-arena-server --ts --preset custom --layout server --netcode tick --matchmaking filterby,reconnection,idle-kick --auth onauth --database none --yes
   ```
 
-- Not a git repository yet.
+- A git repository of its own (`main`), beside the game's; nothing here is pushed or deployed by the
+  game's work.
 
 ## Layout
 
@@ -38,29 +46,40 @@ people, the rolls, the ticks and the accepts cannot live in the browser.
   `@colyseus/database` (Postgres at `DATABASE_URL`) and `@colyseus/admin`'s routes, added after the
   scaffold; what they are for is not written down yet.
 - `src/court/` — the court as the server walks it, **its own copy of the game's**: `lobbyMap.ts`
-  (walls, props and what blocks), `navGrid.ts` (the tile grid and the pathfinder: one-metre tiles,
+  (walls, props and what blocks, the coliseum's gallery and passage, the sand nobody walks on),
+  `navGrid.ts` (the tile grid and the pathfinder: one-metre tiles,
   eight ways round, diagonally first), `walkPath.ts` (a tile a tick walking, two running, and the
   drawing the server never uses) and `point.ts`, each the game's file of the same name with only its
   import paths changed (`walkPath` takes `TICK` from `src/duel/config.ts`); `looks.ts`, the roster ids
-  a person's look is picked from; and `taunts.ts`, the ids of the game's taunt wheel. Nothing here
+  a person's look is picked from; `taunts.ts`, the ids of the game's taunt wheel; and `arena.ts`,
+  `SPOT_COUNT` (50, the length of the game's `ARENA_SPOTS`) and `firstFreeSpot`. Nothing here
   references the game repo.
 - `src/duel/` — the duel, **its own copy of the game's**: `combat`, `combatTick`, `rules`, `weapons`,
   `settlement`, `squareUp`, `startDuel`, `stepDuel`, `bot`, `types`, `config` (the game's whole
   `config.ts`, rendering tunables included: it has no imports) and `payout` (the game's
   `src/money/payout.ts`), each changed only in its import paths, like the court's.
 - `src/duels/` — the server's own: `Balances` (the demo money, by auth user id), `Challenges`
-  (requests waiting for an answer), `DuelTable` (every offer and duel: the accepts, the stakes
-  taken on the second, the game's `stepDuel`, the pay-out) and `newDuel` (a not-yet-started game
-  `Duel`; the game's `createDuel` reads its roster of bots).
+  (requests waiting for an answer), `DuelTable` (every offer and duel: the seats with their looks, the
+  accepts, the spot handed out on the second, the stakes taken after it, the game's `stepDuel`, the
+  pay-out) and `newDuel` (a not-yet-started game `Duel`; the game's `createDuel` reads its roster of
+  bots).
 - `src/rooms/CourtRoom.ts` — the court: joining, walking, running, gestures, challenges and walking
   up to them, the offer and the fight's messages, a 50 ms step that steps every duel and, every
-  0.6 s of it, a walking tick that moves everybody a tile or two, leaving. `src/rooms/syncDuels.ts` writes the table into the state at the end of each step.
+  0.6 s of it, a walking tick that moves everybody a tile or two, leaving. Each client gets a
+  `StateView` as it joins. `src/rooms/syncDuels.ts` writes the table into the state at the end of each
+  step, and puts each duel in its two duellists' views as it opens (and takes it out as it goes).
   `src/rooms/schema/` — `CourtState` (people by session id, duels by id), `Person` (name, look,
   position, heading, running, the gesture being made with its count, the duel they are at and
-  whether it has taken them to the arena), `DuelState` and `DuelFighterState` (an offer or a duel
-  as both clients draw it), one schema per file.
+  whether it has taken them to the arena), `DuelState` (an offer or a duel as every client draws it:
+  the two seats, their names and looks, its spot, the rules, the accepts, the ticks and blows, the
+  last exchange; its `stake`, `paidSelf` and `paidRival` are `.view()` fields, sent only to clients
+  whose view holds the duel) and `DuelFighterState`, one schema per file.
 - `test/` — `@colyseus/testing`: boots the real server and connects real clients.
-- `loadtest/` — a `@colyseus/loadtest` script (`--room court`).
+- `loadtest/court.ts` — a hundred clients duelling (`pnpm loadtest`): each walks about now and then,
+  pairs by its number (an even one challenges the next, the odd one says yes), accepts whatever offer
+  it sits at, eats when low and asks again a few seconds after each duel; one logs the room by phase
+  once a minute. In a terminal it runs under `@colyseus/loadtest`'s screen; piped, it joins the clients
+  itself, since that screen never starts them without one.
 - `ecosystem.config.cjs` — pm2, for Colyseus Cloud.
 - `pnpm-workspace.yaml` — install settings pnpm 12 needs (see the pitfalls).
 
@@ -70,6 +89,7 @@ people, the rolls, the ticks and the accepts cannot live in the browser.
 - `pnpm start` — watch mode on port 2567 (`PORT` overrides it). Playground at
   http://localhost:2567, monitor at http://localhost:2567/monitor.
 - `pnpm test` — mocha over `test/**.test.ts`.
+- `pnpm loadtest` — against `pnpm start`: a hundred clients duelling (above).
 - `pnpm exec tsc -p . --noEmit` — type check, tests included.
 - `pnpm build` — compiles to `build/`; `node build/index.js` runs it, with the same environment
   variables (`.env.development` / `.env.production`).
@@ -99,6 +119,16 @@ people, the rolls, the ticks and the accepts cannot live in the browser.
 - **The duel lives in the court room**, not a room of its own: two people never change rooms, so
   their names, looks, balances and reconnection stay where they are, and "disappearing into the
   arena" is `Person.away`, which the clients read. The court's step steps every duel.
+- **A spot before the stakes.** On the second accept the table hands the duel the first free spot (an
+  index into the game's `ARENA_SPOTS`, -1 until then) and only then takes the stakes; a spot is free
+  again once its duel is gone. With every spot taken nothing is staked, both accepts are taken back
+  and both seats are told `arenaFull {}` — the game says "The arena is full. Try again in a moment."
+  The game draws each duel on its spot from `DuelState.spot`, the challenger on the spot's west mark.
+- **Spectating is the state.** Every duel in the room is in every client's patches — the game draws
+  them all on their spots in the coliseum for whoever watches from the gallery — with the seats'
+  looks and names on the duel itself, so a fighter who has left mid-duel is still drawn. Only the
+  money is private: `stake` and the payouts are `.view()` fields, and each client's `StateView`
+  holds just the duels it sits at.
 - **A challenge is walked, then asked.** The challenger is walked to a tile beside the other person's
   (one sharing a side with it, the route planned again every tick while they move); only then, on
   the tick after arriving, is the request put to them, for 20 s. Two people challenging each other
@@ -134,7 +164,7 @@ people, the rolls, the ticks and the accepts cannot live in the browser.
   that arrives takes the count it finds as already seen instead of replaying it.
 - **Joining:** `Player N` counted per room, a look going round the roster by join order (the client
   maps it to a model with `lookOf`), a free spot near the court's `SPAWN` clear of anybody standing
-  there, running on. `maxClients` is 16.
+  there, running on. `maxClients` is 100.
 - **No `filterBy` until there is something to split courts by** (region, stake tier, currency). No
   lobby room either: a player lands in a court and finds people there.
 - **Reconnection holds the seat, and a duel will never wait for it.** A dropped connection keeps its
@@ -185,8 +215,9 @@ people, the rolls, the ticks and the accepts cannot live in the browser.
 1. **The Platform:** the token in `onAuth`, the balance and the stakes reserved and settled through
    Finance instead of `Balances`, and where the rolls' randomness comes from instead of
    `Math.random` (the integrated games take outcomes through an `outcomeProvider`).
-2. **Others see every duel's state** in their patches. At sixteen people that is nothing; Colyseus's
-   per-client state views could filter it when it matters.
+2. **Every duel's state goes to everybody**, by design now (spectating), at a hundred people and
+   fifty duels; the money is already filtered by the views. A bigger court would filter by distance
+   (who is near enough to see a duel) the same way.
 
 ## Known pitfalls
 
@@ -203,6 +234,16 @@ people, the rolls, the ticks and the accepts cannot live in the browser.
   the game drew differently. The same `diff <(tail -n +4 src/duel/<name>.ts)
   ../void-casino-games/src/games/duel-arena/game/<name>.ts` shows only import lines, and the game's
   `combat`, `combatTick`, `stepDuel` and `settlement` tests run here against the copies.
+- **The arena's spots are named by index on both sides.** `SPOT_COUNT` here is the length of the
+  game's `ARENA_SPOTS` (`game/arena/arenaSpots.ts`), which lists them nearest the middle first; change
+  the game's spots and change the count here, or a duel is handed a spot the game doesn't have.
+- **The config is the game's whole file.** `src/duel/config.ts` is the game's `config.ts` after the
+  three-line header, visual tunables included (the detail and people tunables too):
+  `diff <(tail -n +4 src/duel/config.ts) ../void-casino-games/src/games/duel-arena/game/config.ts`
+  shows nothing.
+- **A load test killed mid-way holds its seats.** Every client of a run stopped without leaving is a
+  dropped connection, its seat held for the 30 s reconnection window; a run started inside that window
+  lands partly in a second court.
 - **The tests share one server.** `test/testServer.ts` boots it once for every file: a second
   `boot()` after a `shutdown()` in the same process fails to matchmake. Give each client its own
   `sdk.auth.token` when balances matter — the token is the user, and the user owns the balance.
