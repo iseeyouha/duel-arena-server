@@ -4,6 +4,7 @@ import { NO_RULES } from "../src/duel/rules.js";
 import { settlement } from "../src/duel/settlement.js";
 import { Balances } from "../src/duels/Balances.js";
 import { DuelTable, type TableNews } from "../src/duels/DuelTable.js";
+import { SPOT_REST } from "../src/court/arena.js";
 
 const seat = (n: number) => ({ id: `s${n}`, user: `u${n}`, name: `Player ${n}`, look: "soldier-red" });
 
@@ -219,12 +220,25 @@ describe("the duel table", () => {
     for (let step = 0; step < 20_000 && table.duels.has(first.id); step++) table.step(0.05, Math.random);
     assert.ok(!table.duels.has(first.id) || !table.duels.has(second.id), "one of them ended");
     const gone = table.duels.has(first.id) ? second : first;
+    for (let rested = 0; rested <= SPOT_REST; rested += 0.05) table.step(0.05, Math.random);
     const third = table.open(seat(5), seat(6), NO_RULES, 1_000);
     table.accept("s5", Math.random, third.revision);
     table.accept("s6", Math.random, third.revision);
     assert.strictEqual(third.spot, gone.spot);
     const live = [...table.duels.values()].map((duel) => duel.spot);
     assert.strictEqual(new Set(live).size, live.length, "no two duels on one spot");
+  });
+
+  it("keeps a finished duel's spot empty while its fighters go down through their portals", () => {
+    const table = new DuelTable(new Balances());
+    const first = table.open(seat(1), seat(2), NO_RULES, 1_000);
+    table.accept("s1", Math.random, first.revision);
+    table.accept("s2", Math.random, first.revision);
+    for (let step = 0; step < 20_000 && table.duels.has(first.id); step++) table.step(0.05, Math.random);
+    const next = table.open(seat(3), seat(4), NO_RULES, 1_000);
+    table.accept("s3", Math.random, next.revision);
+    table.accept("s4", Math.random, next.revision);
+    assert.notStrictEqual(next.spot, first.spot);
   });
 
   it("refuses the second accept when the arena is full, staking nothing", () => {

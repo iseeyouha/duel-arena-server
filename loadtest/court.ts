@@ -34,7 +34,8 @@ function report(state: Court) {
     if (duel.spot >= 0) spots.push(duel.spot);
   });
   const twice = spots.length - new Set(spots).size;
-  console.log(`[court] ${state.people.size} people; duels ${JSON.stringify(phases)}; spots ${Math.min(...spots)}–${Math.max(...spots)}, ${twice} used twice`);
+  const range = spots.length > 0 ? `${Math.min(...spots)}–${Math.max(...spots)}` : "none";
+  console.log(`[court] ${state.people.size} people; duels ${JSON.stringify(phases)}; spots ${range}, ${twice} used twice`);
 }
 
 export async function main(options: Options) {

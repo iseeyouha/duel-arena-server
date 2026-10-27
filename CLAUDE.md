@@ -24,8 +24,9 @@ people, the rolls, the ticks and the accepts cannot live in the browser.
   free of the game's fifty) and anybody on the gallery watches. Every duel's state goes to the whole
   room — its looks and names on it, so a fighter who has left is still drawn — but its money only to
   its two duellists.
-- **A hundred people a court.** Load-tested with `pnpm loadtest`: a hundred clients duelling, fifty
-  duels at once, at about 3% of a core.
+- **A hundred people a court.** Load-tested with `pnpm loadtest`: a hundred clients duelling — some
+  forty duels fought at once, the rest agreeing their next, every one of the fifty spots in turn — at
+  about 3% of a core.
 - Not yet: chat, the Platform's auth, balance and randomness, rejoining a duel after a reload, a
   rematch.
 - Scaffolded with `create-colyseus-app` 0.18.1:
@@ -121,7 +122,8 @@ people, the rolls, the ticks and the accepts cannot live in the browser.
   arena" is `Person.away`, which the clients read. The court's step steps every duel.
 - **A spot before the stakes.** On the second accept the table hands the duel the first free spot (an
   index into the game's `ARENA_SPOTS`, -1 until then) and only then takes the stakes; a spot is free
-  again once its duel is gone. With every spot taken nothing is staked, both accepts are taken back
+  again `SPOT_REST` (2 s) after its duel is gone, while the game sinks its two through their portals,
+  so the next pair never comes up under them. With every spot taken nothing is staked, both accepts are taken back
   and both seats are told `arenaFull {}` — the game says "The arena is full. Try again in a moment."
   The game draws each duel on its spot from `DuelState.spot`, the challenger on the spot's west mark.
 - **Spectating is the state.** Every duel in the room is in every client's patches — the game draws

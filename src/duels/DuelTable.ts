@@ -1,4 +1,4 @@
-import { firstFreeSpot, SPOT_COUNT } from "../court/arena.js";
+import { firstFreeSpot, SPOT_COUNT, SPOT_REST } from "../court/arena.js";
 import { TAUNTS } from "../court/taunts.js";
 import { MIN_BET, SPEC_COST } from "../duel/config.js";
 import { NO_RULES, specAllowed, type DuelRuleId, type DuelRules } from "../duel/rules.js";
@@ -62,6 +62,8 @@ const isStake = (cents: unknown): cents is number =>
 export class DuelTable {
   readonly duels = new Map<string, TableDuel>();
   private opened = 0;
+  /** Spots whose duel is over, and the seconds each has still to stay empty (`SPOT_REST`). */
+  private resting = new Map<number, number>();
 
   /** `spots` is how many duels the arena holds at once. */
   constructor(private balances: Balances, private spots: number = SPOT_COUNT) {}
@@ -183,6 +185,10 @@ export class DuelTable {
 
   step(dt: number, random: () => number): TableNews[] {
     const news: TableNews[] = [];
+    for (const [spot, left] of this.resting) {
+      if (left <= dt) this.resting.delete(spot);
+      else this.resting.set(spot, left - dt);
+    }
     for (const duel of [...this.duels.values()]) {
       if (duel.duel.phase === "offer") { continue; }
       const event = stepDuel(duel.duel, dt, random);
@@ -191,6 +197,7 @@ export class DuelTable {
         news.push({ type: "settled", duel });
       } else if (event === "ready") {
         this.duels.delete(duel.id);
+        if (duel.spot >= 0) this.resting.set(duel.spot, SPOT_REST);
         news.push({ type: "ended", duel });
       }
     }
@@ -198,7 +205,9 @@ export class DuelTable {
   }
 
   private takenSpots() {
-    return new Set([...this.duels.values()].map((duel) => duel.spot).filter((spot) => spot >= 0));
+    const taken = new Set([...this.duels.values()].map((duel) => duel.spot).filter((spot) => spot >= 0));
+    for (const spot of this.resting.keys()) taken.add(spot);
+    return taken;
   }
 
   private agreeing(sessionId: string) {
