@@ -51,15 +51,14 @@ export const EAT_DELAY = 3
 export const BOT_EAT_LOW = 20
 export const BOT_EAT_HIGH = 34
 
-// How long a blow takes on screen. It starts on the tick of the attack, as the game's do, with the
-// splat: the arm whips over and the blow lands this long into it — a flick, not a wind-up, three
-// held poses (`POSE_RATE`), so the one it lands on is shown the instant it lands — then comes through
-// and down to the stand, as short as the game's own. Both are whole numbers of poses.
-export const SWING_WINDUP = 0.24
-export const SWING_RECOVER = 0.56
-// Bodies move in held poses, as the game's do: each pose of a clip is held for four of the game
-// client's 20 ms cycles before the next replaces it, never blended into it.
-export const POSE_RATE = 12.5
+// How long a blow takes on screen: the arm going back and up over the shoulder before the attack
+// lands — started off the attack timer, so the crack comes on the tick, with the splat and the
+// blood — and coming through and back down into the guard after it. Both fit inside the four ticks
+// (2.4 s) between attacks with the guard breathing between them, and the windup is long enough to
+// read as one before the crack. It is shorter than a tick, so a meal (which never delays an attack
+// due on the next tick) can never call one off halfway.
+export const SWING_WINDUP = 0.45
+export const SWING_RECOVER = 1.15
 
 // The execution, in real seconds, beat by beat: the beaten one reels and goes down on their knees,
 // the winner walks in while the camera comes with them, the tentacle goes up, it goes in, the body
@@ -110,7 +109,7 @@ export const MAX_STEP = 0.1
 // house. That cut is the house's whole interest in a duel: it never prices who wins.
 export const HOUSE_CUT = 0.03
 
-// How far each fighter stands from the middle of the courtyard's fight floor (`courtyardMap`), and how far they are turned out of pure profile so
+// How far each fighter stands from the middle of their spot on the sand (`arenaSpots`), and how far they are turned out of pure profile so
 // the camera gets a face rather than an ear.
 export const FIGHTER_X = 1
 export const FACE_TURN = 0.24
@@ -122,10 +121,7 @@ export const BOX_X = 0.65
 // characters' own, so they stand at the pack's size, about 1.8 m.
 export const HEAD_HEIGHT = 1.569
 
-// Time stretches on the blow that ends a duel, so the last hit is something you watch rather than
-// something that already happened. The whole fight is stepped through it.
-export const SLOW_SCALE = 0.3
-export const SLOW_HOLD = 0.8
+// How long a stretch of slow motion (the execution's) takes to ease back up to full speed.
 export const SLOW_RECOVER = 0.7
 
 // A heavy blow holds the whole scene still for a few hundredths of a second where it lands, and a
@@ -147,8 +143,9 @@ export const MAX_HIT_SHAKE = 1.7
 // What a blow leaves in the air: the splat's size on the sand, and the bar over each head.
 export const SPLAT_SIZE = 0.42
 export const SPLAT_LIFE = 0.95
-// Over the Fantasy Kingdom heads, which top out at 1.79–1.84 m.
-export const BAR_HEIGHT = 2.02
+// How far over the top of each body, hat and all, its bar hangs: where 2.02 m left it over the
+// Fantasy Kingdom heads' 1.84.
+export const BAR_OVER = 0.18
 
 // Everybody in the lobby is the same combat level, yours included: maxed, like you.
 export const COMBAT_LEVEL = 126
@@ -175,3 +172,13 @@ export const MAX_DPR = 2
 export const TOUCH_MAX_DPR = 1.5
 export const MIN_DPR = 1
 export const DPR_STEP = 0.25
+
+// How many duels besides yours are drawn in full — the smear, the wounds, what is left on the sand —
+// at once: those nearest where the camera looks. One in full keeps it until another is this many
+// metres nearer.
+export const FULL_DUELS_TOUCH = 2
+export const FULL_DUELS_DESKTOP = 6
+export const DETAIL_HYSTERESIS = 2
+// Further than this from the camera, a duel drawn light is posed only every so many frames.
+export const FAR_DUEL = 18
+export const FAR_POSE_EVERY = 2
