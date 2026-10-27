@@ -475,4 +475,19 @@ describe("duels in the court", () => {
     await until(room, () => full.every((got) => got.length > 0));
     assert.strictEqual(room.state.duels.get(duelId).phase, "offer");
   });
+
+  it("sends a duel's stake only to its two duellists", async () => {
+    const room = await colyseus.createRoom<CourtRoom>("court", {});
+    const { a, b, duelId } = await challengeAndAnswer(room);
+    const c = await join(room, 3);
+    await steps(room, 4);
+    assert.strictEqual(a.state.duels.get(duelId).stake, 1_000);
+    assert.strictEqual(b.state.duels.get(duelId).stake, 1_000);
+    assert.ok(c.state.duels.get(duelId), "everybody sees the duel");
+    assert.notStrictEqual(c.state.duels.get(duelId).stake, 1_000);
+    a.send("setStake", { cents: 2_500 });
+    await steps(room, 4);
+    assert.strictEqual(b.state.duels.get(duelId).stake, 2_500);
+    assert.notStrictEqual(c.state.duels.get(duelId).stake, 2_500);
+  });
 });

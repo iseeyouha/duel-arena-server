@@ -1,7 +1,8 @@
 import { schema, t, type SchemaType } from "@colyseus/schema";
 import { DuelFighterState } from "./DuelFighterState.js";
 
-// An offer being agreed or a duel being fought, as everybody in the room sees it. `self` is whoever
+// An offer being agreed or a duel being fought, as everybody in the room sees it — but for its money,
+// which only its two duellists are sent (`.view()`: each of them has the duel in their `StateView`). `self` is whoever
 // challenged and `rival` whoever was challenged; each client turns it round to its own side.
 // Nothing here decides a roll still to come.
 export const DuelState = schema({
@@ -21,7 +22,7 @@ export const DuelState = schema({
   noArmour: t.boolean().default(false),
   noWeapons: t.boolean().default(false),
   noSpec: t.boolean().default(false),
-  stake: t.number().default(0),
+  stake: t.number().default(0).view(),
   selfAccepted: t.boolean().default(false),
   rivalAccepted: t.boolean().default(false),
   resets: t.number().default(0),
@@ -43,7 +44,7 @@ export const DuelState = schema({
   stabsRival2: t.number().default(-1),
   // How it ended for `self`: won, lost or drawn; empty until then. What each side was paid.
   result: t.string().default(""),
-  paidSelf: t.number().default(0),
-  paidRival: t.number().default(0),
+  paidSelf: t.number().default(0).view(),
+  paidRival: t.number().default(0).view(),
 });
 export type DuelState = SchemaType<typeof DuelState>;

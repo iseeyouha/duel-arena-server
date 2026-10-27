@@ -1,5 +1,6 @@
 import { Room, Client, CloseCode, definePlugins, ServerError, type AuthContext } from "colyseus";
 import { IdleKickPlugin } from "colyseus/plugins/idle-kick";
+import { StateView } from "@colyseus/schema";
 
 import { SPAWN } from "../court/lobbyMap.js";
 import { LOOKS } from "../court/looks.js";
@@ -208,6 +209,9 @@ export class CourtRoom extends Room<{ state: CourtState }> {
 
   onJoin(client: Client) {
     this.users.set(client.sessionId, client.auth.userId);
+    // What only this client may be sent — the money of a duel it sits at — is added to its view.
+    // Colyseus carries the view over a reconnection.
+    client.view = new StateView();
     const look = LOOKS[this.joined % LOOKS.length];
     this.joined += 1;
     const spot = this.freeSpot();
@@ -265,7 +269,7 @@ export class CourtRoom extends Room<{ state: CourtState }> {
     // A duel is fought to its end and paid even when both fighters have gone: the court stays open
     // for it, and closes itself once it is empty and nothing is left on the table.
     this.autoDispose = this.table.duels.size === 0;
-    syncDuels(this.state, this.table);
+    syncDuels(this.state, this.table, (id) => this.clients.getById(id)?.view);
   }
 
   /** One game tick of the court: the challengers on their way first, then everybody's steps. */

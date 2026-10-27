@@ -1,3 +1,4 @@
+import type { StateView } from "@colyseus/schema";
 import type { Side } from "../duel/types.js";
 import type { DuelTable, TableDuel } from "../duels/DuelTable.js";
 import type { CourtState } from "./schema/CourtState.js";
@@ -59,16 +60,22 @@ function writeDuel(view: DuelState, duel: TableDuel) {
 
 /**
  * The table into the room's state, at the end of every step: each offer and duel, and where
- * everybody is seated. Only what changed goes out in the patch.
+ * everybody is seated. Only what changed goes out in the patch. A duel's money goes only to its two
+ * duellists: each one's view (`viewOf`) is given the duel when it opens and loses it when it goes.
  */
-export function syncDuels(state: CourtState, table: DuelTable) {
-  for (const id of [...state.duels.keys()]) if (!table.duels.has(id)) state.duels.delete(id);
+export function syncDuels(state: CourtState, table: DuelTable, viewOf: (sessionId: string) => StateView | undefined) {
+  for (const [id, gone] of [...state.duels.entries()]) {
+    if (table.duels.has(id)) { continue; }
+    for (const seat of [gone.self, gone.rival]) viewOf(seat)?.remove(gone);
+    state.duels.delete(id);
+  }
   const seated = new Map<string, { duel: string; away: boolean }>();
   for (const duel of table.duels.values()) {
     let view = state.duels.get(duel.id);
     if (!view) {
       view = new DuelState();
       state.duels.set(duel.id, view);
+      for (const side of SIDES) viewOf(duel.seats[side].id)?.add(view);
     }
     writeDuel(view, duel);
     for (const side of SIDES) seated.set(duel.seats[side].id, { duel: duel.id, away: duel.duel.phase !== "offer" });
