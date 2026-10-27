@@ -182,3 +182,10 @@ export const DETAIL_HYSTERESIS = 2
 // Further than this from the camera, a duel drawn light is posed only every so many frames.
 export const FAR_DUEL = 18
 export const FAR_POSE_EVERY = 2
+
+// A full court is a hundred people. Only so many nearest where the camera looks cast a shadow or
+// carry a name over their head, and further than this from it a body is posed only every
+// `FAR_POSE_EVERY` frames.
+export const PEOPLE_SHADOWS = 12
+export const PEOPLE_NAMES = 24
+export const FAR_PEOPLE = 22
