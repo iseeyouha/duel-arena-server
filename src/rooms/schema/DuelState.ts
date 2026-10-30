@@ -23,6 +23,9 @@ export const DuelState = schema({
   noWeapons: t.boolean().default(false),
   noSpec: t.boolean().default(false),
   stake: t.number().default(0).view(),
+  // Whether each side's balance covers the stake: all either duellist learns of the other's money.
+  selfCovers: t.boolean().default(true).view(),
+  rivalCovers: t.boolean().default(true).view(),
   selfAccepted: t.boolean().default(false),
   rivalAccepted: t.boolean().default(false),
   resets: t.number().default(0),

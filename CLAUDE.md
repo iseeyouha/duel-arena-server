@@ -74,7 +74,8 @@ people, the rolls, the ticks and the accepts cannot live in the browser.
   whether it has taken them to the arena), `DuelState` (an offer or a duel as every client draws it:
   the two seats, their names and looks, its spot, the rules, the accepts, the ticks and blows, the
   last exchange; its `stake`, `paidSelf` and `paidRival` are `.view()` fields, sent only to clients
-  whose view holds the duel) and `DuelFighterState`, one schema per file.
+  whose view holds the duel, and so are `selfCovers` and `rivalCovers`) and `DuelFighterState`, one
+  schema per file.
 - `test/` — `@colyseus/testing`: boots the real server and connects real clients.
 - `loadtest/court.ts` — a hundred clients duelling (`pnpm loadtest`): each walks about now and then,
   pairs by its number (an even one challenges the next, the odd one says yes), accepts whatever offer
@@ -156,8 +157,12 @@ people, the rolls, the ticks and the accepts cannot live in the browser.
   told so with `yourself`, not ignored. (The game gives a duplicated tab a token of its own, but
   with the Platform's auth every tab of an account will be the same user.) A client asks for its balance
   once it is listening — sent on joining, it could arrive before the handler — and again after a
-  reconnect, and every tab of the user is told on every change a duel makes. Nobody else is ever told it, so the offer never caps the stake by the other side's
-  balance: a stake you can't cover just can't be accepted by you.
+  reconnect, and every tab of the user is told on every change a duel makes. Nobody else is ever
+  told it, so the offer never caps the stake by the other side's balance: a stake you can't cover
+  just can't be accepted by you. What the other duellist learns is only that much — whether each
+  side covers the stake as it stands (`DuelTable.covers`, written every step as `selfCovers` and
+  `rivalCovers`, `.view()` like the stake), so the game can say "can't cover" on their card instead
+  of an offer that never starts. Never the amount, and nobody outside the duel.
 - **Gestures are the game's rules for one.** `emote` takes only an id from the taunt wheel (the
   winner's celebrations belong to the ring), stops the person where they stand and sets `emote` on
   them, bumping `emoteCount` so the same gesture made again reads as a new one; their next accepted

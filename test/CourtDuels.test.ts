@@ -490,4 +490,22 @@ describe("duels in the court", () => {
     assert.strictEqual(b.state.duels.get(duelId).stake, 2_500);
     assert.notStrictEqual(c.state.duels.get(duelId).stake, 2_500);
   });
+
+  it("tells both duellists, and nobody else, when one can't cover the stake", async () => {
+    const room = await colyseus.createRoom<CourtRoom>("court", {});
+    const { a, b, duelId } = await challengeAndAnswer(room);
+    const c = await join(room, 3);
+    await steps(room, 4);
+    assert.strictEqual(a.state.duels.get(duelId).rivalCovers, true);
+    room.balances.take(user(2), room.balances.of(user(2)) - 500);
+    await steps(room, 4);
+    for (const duellist of [a, b]) {
+      assert.strictEqual(duellist.state.duels.get(duelId).selfCovers, true);
+      assert.strictEqual(duellist.state.duels.get(duelId).rivalCovers, false);
+    }
+    assert.notStrictEqual(c.state.duels.get(duelId).rivalCovers, false);
+    a.send("setStake", { cents: 500 });
+    await steps(room, 4);
+    assert.strictEqual(a.state.duels.get(duelId).rivalCovers, true);
+  });
 });

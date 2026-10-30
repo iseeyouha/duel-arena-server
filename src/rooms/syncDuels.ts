@@ -22,7 +22,7 @@ function writeFighter(view: DuelFighterState, duel: TableDuel, side: Side) {
   view.specAsk = duel.specAsks[side];
 }
 
-function writeDuel(view: DuelState, duel: TableDuel) {
+function writeDuel(view: DuelState, duel: TableDuel, table: DuelTable) {
   const { duel: game } = duel;
   view.self = duel.seats.self.id;
   view.rival = duel.seats.rival.id;
@@ -37,6 +37,8 @@ function writeDuel(view: DuelState, duel: TableDuel) {
   view.noWeapons = duel.rules.noWeapons;
   view.noSpec = duel.rules.noSpec;
   view.stake = duel.stake;
+  view.selfCovers = table.covers(duel, "self");
+  view.rivalCovers = table.covers(duel, "rival");
   view.selfAccepted = duel.accepted.self;
   view.rivalAccepted = duel.accepted.rival;
   view.resets = duel.resets;
@@ -77,7 +79,7 @@ export function syncDuels(state: CourtState, table: DuelTable, viewOf: (sessionI
       state.duels.set(duel.id, view);
       for (const side of SIDES) viewOf(duel.seats[side].id)?.add(view);
     }
-    writeDuel(view, duel);
+    writeDuel(view, duel, table);
     for (const side of SIDES) seated.set(duel.seats[side].id, { duel: duel.id, away: duel.duel.phase !== "offer" });
   }
   state.people.forEach((person, id) => {

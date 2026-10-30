@@ -81,6 +81,17 @@ describe("the duel table", () => {
     assert.strictEqual(balances.of("u1"), 100_000);
   });
 
+  it("says whether each side's balance covers the stake as it stands", () => {
+    const { balances, table, duel } = setUp(1_000);
+    assert.strictEqual(table.covers(duel, "self"), true);
+    assert.strictEqual(table.covers(duel, "rival"), true);
+    balances.take("u2", balances.of("u2") - 999);
+    assert.strictEqual(table.covers(duel, "rival"), false);
+    assert.strictEqual(table.covers(duel, "self"), true);
+    table.setStake("s1", 999);
+    assert.strictEqual(table.covers(duel, "rival"), true);
+  });
+
   it("takes both stakes on the second accept and starts the duel", () => {
     const { table, duel, balances } = setUp();
     assert.strictEqual(table.accept("s1", Math.random, duel.revision), null);

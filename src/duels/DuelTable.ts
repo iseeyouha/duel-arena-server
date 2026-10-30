@@ -88,6 +88,14 @@ export class DuelTable {
     return duel;
   }
 
+  /**
+   * Whether a side's balance covers the stake as it stands. The other side is told this much and no
+   * more, so a stake one of them can't match isn't just an offer that never starts.
+   */
+  covers(duel: TableDuel, side: Side) {
+    return this.balances.of(duel.seats[side].user) >= duel.stake;
+  }
+
   seatOf(sessionId: string): { duel: TableDuel; side: Side } | null {
     for (const duel of this.duels.values()) {
       for (const side of SIDES) if (duel.seats[side].id === sessionId) return { duel, side };
